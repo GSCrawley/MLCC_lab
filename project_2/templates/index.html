@@ -4,14 +4,20 @@
     <meta charset="UTF-8">
     <title>Salary Prediction</title>
 </head>
-<body>
-    <h1>Salary Prediction Form</h1>
-    <form id="predictionForm" action="/predict" method="post">
-        <label for="yearsExperience">Years of Experience:</label>
-        <input type="number" id="yearsExperience" name="yearsExperience" step="0.1" min="0" required>
-        <button type="submit">Predict Salary</button>
-    </form>
-    <div id="predictionResult"></div>
+<body style="display: flex; justify-content: center; align-items: center; height: 100vh;">
+    <div style="border: 1px solid black; padding: 20px;">
+        <h1>Let's Predict Your Salary!</h1>
+        <form id="predictionForm" action="/predict" method="post">
+            <label for="yearsExperience">Years of Experience:</label>
+            <input type="number" id="yearsExperience" name="yearsExperience" step="0.1" min="0" required>
+            <button type="submit">Predict Salary</button>
+        </form>
+        <div id="predictionResult" style="display: none;">
+            <h2>Salary Prediction Result</h2>
+            <p id="yearsExperienceResult"></p>
+            <p id="predictedSalaryResult"></p>
+        </div>
+    </div>
 
     <script>
       document.getElementById('predictionForm').onsubmit = function(event) {
@@ -24,11 +30,13 @@
             'Content-Type': 'application/json'
         },
         body: JSON.stringify({ yearsExperience: yearsExperience })
-    }).then(response => {
-        if (response.redirected) {
-            window.location.href = response.url;
-        }
-    }).catch(error => console.error('Error:', error));
+    }).then(response => response.json())
+      .then(data => {
+        document.getElementById('predictionResult').style.display = 'block';
+        document.getElementById('yearsExperienceResult').textContent = 'Years of Experience: ' + data.years_experience;
+        document.getElementById('predictedSalaryResult').textContent = 'Estimated Salary: $' + data.predicted_salary;
+      })
+      .catch(error => console.error('Error:', error));
 };
     </script>
 </body>

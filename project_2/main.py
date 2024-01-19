@@ -28,11 +28,11 @@ def predict_salary():
     new_data = pd.DataFrame([[years_exp]], columns=['YearsExperience'])
     salary_pred = model.predict(new_data)[0]
 
-    # Convert salary_pred to float for url_for
-    return redirect(url_for('result', 
-        years_experience=years_exp, 
-        predicted_salary=float(salary_pred)
-    ))
+    # Return a JSON response
+    return jsonify({
+        'years_experience': years_exp,
+        'predicted_salary': round(float(salary_pred), 2)
+    })
 
 @app.route('/result')
 def result():
