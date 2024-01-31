@@ -1,10 +1,16 @@
 import pyTigerGraph as tg
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
+
+tg = os.getenv('TG_SECRET')
 
 host = "https://3314d527106244578c3eff59e7a1ce42.i.tgcloud.io"
 graphname = "MLCC_Lab"
 username = "user_1"
 password = "Tb1Yb8Kc6Vt6Jf3_"
-secret = "s800no94cutspdqlaae55qfurvr7hsf1"
+secret = tg
 
 conn = tg.TigerGraphConnection(host=host, graphname=graphname, username=username, password=password)
 conn.apiToken = conn.getToken(secret)
