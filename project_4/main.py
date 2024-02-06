@@ -1,16 +1,11 @@
 import pyTigerGraph as tg
 import os
-from dotenv import load_dotenv
 
-load_dotenv()
-
-tg = os.getenv('TG_SECRET')
 
 host = "https://3314d527106244578c3eff59e7a1ce42.i.tgcloud.io"
 graphname = "MLCC_Lab"
 username = "user_1"
 password = "Tb1Yb8Kc6Vt6Jf3_"
-secret = tg
 
 conn = tg.TigerGraphConnection(host=host, graphname=graphname, username=username, password=password)
 conn.apiToken = conn.getToken(secret)
@@ -48,7 +43,7 @@ def create_edge():
     account_id = create_account_vertex()
     conn.upsertEdge("Billing", f"{billing_id}" , "billed", "Account", f"{account_id}")
 
-# create_account_vertex()
+create_account_vertex()
 # create_month_vertex()
 # create_billing_vertex()
-create_edge()
+# create_edge()
