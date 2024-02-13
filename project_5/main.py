@@ -10,7 +10,7 @@ conn = tg.TigerGraphConnection(host=host, graphname=graphname, username=username
 conn.apiToken = conn.getToken(secret)
 print("TOKEN: ", conn.apiToken)
 
-data = pd.read_csv("/Users/gideoncrawley/MSBA/MSBA/Machine Learning 5505/Chapter_1_cleaned_data.csv")
+data = pd.read_csv("/Users/gideoncrawley/MSBA/MSBA/Machine Learning 5505/data/Chapter_1_cleaned_data.csv")
 data = data.head()
 
 def create_month_vertex(month):
@@ -94,7 +94,6 @@ def populate_account(data):
     account_id = create_account_vertex(account_id, limit_bal, status)
     return(account_id)
 
-def populate_payment(data, month):
     payment_id = f"{data['ID']}-{month}"
     if month == "April":
         pay_amt = int(data['PAY_AMT6'])
@@ -111,19 +110,138 @@ def populate_payment(data, month):
     payment_id = create_payment_vertex(payment_id, pay_amt)
     return(payment_id)
 
+def populate_event(sender_id, receiver_id, sender_type, receiver_type, t):
+    event_id = str(t)
+
+    if sender_type =="Month" and receiver_type == "Billing":
+        attributes = {
+            "event_type": "Monthly Billing Event",
+            "sender_id": sender_id,
+            "receiver_id": receiver_id,
+            "sender_type": sender_type,
+            "receiver_type": receiver_type
+        }
+        conn.upsertVertex("Event", event_id, attributes)
+        conn.upsertEdge("Event", event_id, "month_event", "Month", sender_id)
+        conn.upsertEdge("Event", event_id, "billing_event", "Billing", receiver_id)
+
+    if sender_type =="Billing" and receiver_type == "Customer":
+        attributes = {
+            "event_type": "Customer Billing Event",
+            "sender_id": sender_id,
+            "receiver_id": receiver_id,
+            "sender_type": sender_type,
+            "receiver_type": receiver_type
+        }
+        conn.upsertVertex("Event", event_id, attributes)
+        conn.upsertEdge("Event", event_id, "billing_event", "Billing", sender_id)
+        conn.upsertEdge("Event", event_id, "customer_event", "Customer", receiver_id)
+    
+    if sender_type =="Billing" and receiver_type == "Account":
+        attributes = {
+            "event_type": "Account Billing Event",
+            "sender_id": sender_id,
+            "receiver_id": receiver_id,
+            "sender_type": sender_type,
+            "receiver_type": receiver_type
+        }
+        conn.upsertVertex("Event", event_id, attributes)
+        conn.upsertEdge("Event", event_id, "billing_event", "Billing", sender_id)
+        conn.upsertEdge("Event", event_id, "account_event", "Account", receiver_id)
+
+    if sender_type =="Customer" and receiver_type == "Account":
+        attributes = {
+            "event_type": "Account Customer Event",
+            "sender_id": sender_id,
+            "receiver_id": receiver_id,
+            "sender_type": sender_type,
+            "receiver_type": receiver_type
+        }
+        conn.upsertVertex("Event", event_id, attributes)
+        conn.upsertEdge("Event", event_id, "customer_event", "Customer", sender_id)
+        conn.upsertEdge("Event", event_id, "account_event", "Account", receiver_id)
+
+    if sender_type =="Account" and receiver_type == "Payment":
+        attributes = {
+            "event_type": "Payment Account Event",
+            "sender_id": sender_id,
+            "receiver_id": receiver_id,
+            "sender_type": sender_type,
+            "receiver_type": receiver_type
+        }
+        conn.upsertVertex("Event", event_id, attributes)
+        conn.upsertEdge("Event", event_id, "account_event", "Account", sender_id)
+        conn.upsertEdge("Event", event_id, "payment_event", "Payment", receiver_id)
+
+    if t != 0:
+        prev_id = int(t)-1
+        conn.upsertEdge("Event", event_id, "event_edge", "Event", str(prev_id))
+
+
 def populate(data):
     month_list = ['April', 'May', 'June', 'July', 'August', 'September']
+    payment_id = ""
+    t = 0
     for month in month_list:
         month = populate_month(month)
         for index, row in data.iterrows():
+            # Populate data for each entity
+            # Billing Event
             billing_id = populate_billing(row, month)
-            customer_id = populate_customer(row)
-            account_id = populate_account(row)
-            payment_id = populate_payment(row, month)
-            conn.upsertEdge("Billing", f"{billing_id}", "billed","Account", f"{account_id}")
-            conn.upsertEdge("Customer", f"{customer_id}", "holds", "Account", f"{account_id}")
-            conn.upsertEdge( "Account", f"{account_id}", "paid", "Payment", f"{payment_id}")
-            conn.upsertEdge("Customer", f"{customer_id}", "belongs", "Billing", f"{billing_id}")
-        
+            populate_event(month, billing_id, "Month", "Billing", t)
+            t +=- 1
+
+            # Customer Event
+            customer_id = populate_customer(row, billing_id)
+            populate_event(billing_id, customer_id, "Billing", "Customer", t)
+            t += 1
+
+            # Account Event
+            account_id = populate_account(row, customer_id, billing_id)
+            populate_event(billing_id, account_id, "Billing", "Account", t)
+            t += 1
+            populate_event(customer_id, account_id, "Customer", "Account", t)
+            t += 1
+
+            # Payment Event
+            payment_id = populate_payment(row, account_id, month)
+            populate_event(account_id, payment_id, "Account", "Payment", t)
+            t += 1
+
+def check_data(account_id, month, pay, pay_amt):
+    if month == "May":
+        prev_payment = conn.getVerticesbyId("Payment", f"(account_id)-April")
+        prev_billing = conn.getVerticesbyId("Billing", f"{account_id}-April")
+        curr_billing = conn.getVerticesbyId("Billing", f"{account_id}-May")
+    elif month == "June":
+        prev_payment = conn.getVerticesbyId("Payment", f"(account_id)-May")
+        prev_billing = conn.getVerticesbyId("Billing", f"{account_id}-May")
+        curr_billing = conn.getVerticesbyId("Billing", f"{account_id}-June")
+    elif month == "July":
+        prev_payment = conn.getVerticesbyId("Payment", f"(account_id)-June")
+        prev_billing = conn.getVerticesbyId("Billing", f"{account_id}-June")
+        curr_billing = conn.getVerticesbyId("Billing", f"{account_id}-July")
+    elif month == "August":
+        prev_payment = conn.getVerticesbyId("Payment", f"(account_id)-July")
+        prev_billing = conn.getVerticesbyId("Billing", f"{account_id}-July")
+        curr_billing = conn.getVerticesbyId("Billing", f"{account_id}-August")
+    elif month == "September":
+        prev_payment = conn.getVerticesbyId("Payment", f"(account_id)-August")
+        prev_billing = conn.getVerticesbyId("Billing", f"{account_id}-August")
+        curr_billing = conn.getVerticesbyId("Billing", f"{account_id}-September")
+    
+    print(prev_billing)    
+
+def correct_data(pay, pay_amt):
+    # for index, row in data.iterrows():
+    if prev_billing[0]['attributes']['Bill_Amt'] == 0 and curr_billing[0]['attributes']['Bill_Amt'] == 0:
+        pay = -2
+    elif curr_billing[0]['attributes']['Bill_Amt'] == 0:
+        pay = -1
+    # correct_data = {
+    #     "pay": pay,
+    #     "pay_amt": pay_amt
+    # }
 
 populate(data)
+
