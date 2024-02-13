@@ -4,7 +4,7 @@ import pyTigerGraph as tg
 host = "https://3314d527106244578c3eff59e7a1ce42.i.tgcloud.io"
 graphname = "MLCC_Lab"
 username = "user_2"
-
+password = "Tb1Yb8Kc6Vt6Jf3_"
 
 conn = tg.TigerGraphConnection(host=host, graphname=graphname, username=username, password=password)
 conn.apiToken = conn.getToken(secret)
