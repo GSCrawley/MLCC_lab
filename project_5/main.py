@@ -5,6 +5,7 @@ host = "https://3314d527106244578c3eff59e7a1ce42.i.tgcloud.io"
 graphname = "MLCC_Lab"
 username = "user_2"
 password = "Tb1Yb8Kc6Vt6Jf3_"
+secret = "s800no94cutspdqlaae55qfurvr7hsf1"
 
 conn = tg.TigerGraphConnection(host=host, graphname=graphname, username=username, password=password)
 conn.apiToken = conn.getToken(secret)
@@ -33,9 +34,10 @@ def create_account_vertex(account_id, limit_bal, status):
 def create_customer_vertex(customer_id, sex, age):
     customer_id = f"{customer_id}"
     attributes = {
-        "sex": "male" if sex == 1 else "female",
+        "sex": "male" if sex == "1" else "female",
         "age": age,
     }
+    print(f"Creating customer vertex with id: {customer_id} and attributes: {attributes}")
     conn.upsertVertex("Customer", customer_id, attributes)
     return(customer_id)
 
@@ -80,20 +82,24 @@ def populate_billing(data, month):
     conn.upsertEdge("Month", f"{month}", "invoiced", "Billing", f"{billing_id}")
     return(billing_id)
 
-def populate_customer(data):
+def populate_customer(data, billing_id):
     customer_id = f"{data['ID']}"
     sex = f"{data['SEX']}"
     age = int(data['AGE'])
     customer_id = create_customer_vertex(customer_id, sex, age)
+    conn.upsertEdge("Customer", f"{customer_id}", "belongs", "Billing", f"{billing_id}")
     return(customer_id)
 
-def populate_account(data):
+def populate_account(data, billing_id, customer_id):
     account_id = f"{data['ID']}"
     limit_bal = int(data['LIMIT_BAL'])
     status = bool(data['default payment next month'])
     account_id = create_account_vertex(account_id, limit_bal, status)
+    conn.upsertEdge("Billing", f"{billing_id}", "billed", "Account", f"{account_id}")
+    conn.upsertEdge("Customer", f"{customer_id}", "holds", "Account", f"{account_id}")
     return(account_id)
 
+def populate_payment(data, account_id, month):
     payment_id = f"{data['ID']}-{month}"
     if month == "April":
         pay_amt = int(data['PAY_AMT6'])
@@ -193,11 +199,12 @@ def populate(data):
 
             # Customer Event
             customer_id = populate_customer(row, billing_id)
+            print(f"Customer id returned by populate_customer: {customer_id}")
             populate_event(billing_id, customer_id, "Billing", "Customer", t)
             t += 1
 
             # Account Event
-            account_id = populate_account(row, customer_id, billing_id)
+            account_id = populate_account(row, billing_id, customer_id)
             populate_event(billing_id, account_id, "Billing", "Account", t)
             t += 1
             populate_event(customer_id, account_id, "Customer", "Account", t)

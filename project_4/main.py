@@ -45,6 +45,6 @@ def create_edge():
     conn.upsertEdge("Billing", f"{billing_id}" , "billed", "Account", f"{account_id}")
 
 create_account_vertex()
-# create_month_vertex()
-# create_billing_vertex()
-# create_edge()
+create_month_vertex()
+create_billing_vertex()
+create_edge()
